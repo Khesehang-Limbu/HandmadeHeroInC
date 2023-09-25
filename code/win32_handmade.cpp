@@ -19,11 +19,11 @@ global_variable bool GlobalRunning; //No need to initialize the variable because
 
 
 struct Win32_Offscreen_Buffer {
+	//Pixel is always 32 Bit, and in memory, RGB is stored as Ox xx bb gg rr in little endian systems
 	BITMAPINFO Info;
 	void *Memory;
 	int Width;
 	int Height;
-	int BytesPerPixel;
 	int Pitch;
 }; 
 
@@ -82,7 +82,8 @@ internal void Win32ResizeDipSection(Win32_Offscreen_Buffer *Buffer, int Width, i
 	
 	Buffer->Width = Width;
 	Buffer->Height = Height;
-	Buffer->BytesPerPixel = 4;
+	int BytesPerPixel;
+	BytesPerPixel = 4;
 
 	Buffer->Info.bmiHeader.biSize = sizeof(Buffer->Info.bmiHeader);
 	Buffer->Info.bmiHeader.biWidth = Buffer->Width;
@@ -91,13 +92,13 @@ internal void Win32ResizeDipSection(Win32_Offscreen_Buffer *Buffer, int Width, i
 	Buffer->Info.bmiHeader.biBitCount = 32;
 	Buffer->Info.bmiHeader.biCompression = BI_RGB;
 	
-	int BitmapMemorySize = (Buffer->Width * Buffer->Height)*Buffer->BytesPerPixel;
+	int BitmapMemorySize = (Buffer->Width * Buffer->Height)*BytesPerPixel;
 	Buffer->Memory = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
-	Buffer->Pitch = Width * Buffer->BytesPerPixel;
+	Buffer->Pitch = Width * BytesPerPixel;
 
 }
 
-internal void Win32DisplayBufferInWindow(HDC DeviceContext, int WindowWidth, int WindowHeight, Win32_Offscreen_Buffer Buffer, int X, int Y, int Width, int Height){
+internal void Win32DisplayBufferInWindow(HDC DeviceContext, int WindowWidth, int WindowHeight, Win32_Offscreen_Buffer Buffer){
 	StretchDIBits(
 		DeviceContext,
 		/*
@@ -147,13 +148,8 @@ LRESULT MainWindowCallback(
 		{
 			PAINTSTRUCT Paint;
 			HDC DeviceContext = BeginPaint(Window, &Paint);
-			int X = Paint.rcPaint.left;
-			int Y = Paint.rcPaint.top;
-			int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
-			int Width = Paint.rcPaint.right - Paint.rcPaint.left;
-
 			Win32_Window_Dimension Dimension = Win32_Get_Window_Dimension(Window);
-			Win32DisplayBufferInWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer, X, Y, Width, Height);
+			Win32DisplayBufferInWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer);
 			EndPaint(Window, &Paint);
 		}break;
 
@@ -213,7 +209,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 				RenderWeirdGradient(GlobalBackBuffer, XOffset, YOffset);
 
 				HDC DeviceContext = GetDC(Window);
-				Win32DisplayBufferInWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer, 0, 0, Dimension.Width, Dimension.Height);
+				Win32DisplayBufferInWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer);
 				ReleaseDC(Window, DeviceContext);
 				
 				++XOffset;
